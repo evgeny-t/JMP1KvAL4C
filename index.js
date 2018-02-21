@@ -3,6 +3,7 @@ var Webtask = require("webtask-tools");
 var bodyParser = require("body-parser");
 var googleapis = require("googleapis");
 var client = require("mongodb").MongoClient;
+var pug = require("pug");
 
 function Db(secrets) {
   this._secrets = secrets || process.env;
@@ -64,7 +65,7 @@ app.get("/", function(req, res) {
   db
     .allRepos()
     .then(function(repos) {
-      res.status(200).send({ repos: repos });
+      res.status(200).send(renderIndex(repos));
     })
     .catch(function(error) {
       res.status(500).send({ error: error });
@@ -90,7 +91,6 @@ app.post("/", function(req, res) {
           return prev;
         }, {});
 
-      console.log("repo names:", repoNames);
       return repoNames;
     })
     .then(function(names) {
@@ -138,4 +138,66 @@ function lookupRepos(q, secrets) {
       }
     );
   });
+}
+
+var template = `
+doctype html
+html
+  head
+    title Tweets to Repos
+    script(src='https://unpkg.com/chart.js@2.7.1/dist/Chart.min.js')
+    script(src='https://unpkg.com/google-palette@1.0.0/palette.js')
+  body(onload='onload()')
+    div#container
+      canvas#chart-area
+    script.
+      function hexToRgb(hex) {
+        hex = parseInt(hex, 16);
+        return 'rgb('+(hex>>16)+','+((hex>>8)&0xff)+','+(hex&0xff)+')';
+      }
+      function onload() {
+        var config = !{config};
+        config.data.datasets[0].backgroundColor =
+          palette("rainbow", config.data.datasets[0].data.length)
+            .map(hexToRgb)
+        new Chart(document.getElementById("chart-area")
+          .getContext("2d"), config);
+      };
+`;
+
+var noDataTemplate = `
+doctype html
+html
+  head
+    title Tweets to Repos
+  body
+    div(style="height:100vh;width:100vw;display:flex;justify-content:center;align-items:center;")
+      p No data available
+`;
+
+function renderIndex(repos) {
+  if (repos && repos.length) {
+    var config = {
+      type: "pie",
+      data: {
+        datasets: [
+          {
+            data: repos.map(function(repo) {
+              return repo.count;
+            })
+          }
+        ],
+        labels: repos.map(function(repo) {
+          return repo.name;
+        })
+      },
+      options: {
+        responsive: true
+      }
+    };
+
+    return pug.render(template, { config: JSON.stringify(config) });
+  } else {
+    return pug.render(noDataTemplate);
+  }
 }
