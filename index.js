@@ -128,8 +128,9 @@ function lookupRepos(q, secrets) {
         try {
           var repos = res.items.map(function(i) {
             var match = i.link.match(/github.com\/([^\/]+)\/([^\/]+)/);
-            if (match) return [match[1], match[2]];
-            else return [];
+            if (match && match.length === 3) {
+              return [match[1], match[2]];
+            } else return [];
           });
           resolve(repos);
         } catch (error) {
