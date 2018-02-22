@@ -68,17 +68,18 @@ app.get("/", function(req, res) {
       res.status(200).send(renderIndex(repos));
     })
     .catch(function(error) {
+      console.error(error);
       res.status(500).send({ error: error });
     });
 });
 
 app.post("/", function(req, res) {
   var db = new Db(req.webtaskContext.secrets);
-  var text = req.body.text;
-  var tosearch = text.replace(/\W/, " ");
 
   Promise.resolve()
     .then(function() {
+      var text = req.body.text;
+      var tosearch = text.replace(/(https?:\/\/\S+)|(@\S+)|\W/g, " ");
       return lookupRepos(tosearch, req.webtaskContext.secrets);
     })
     .then(function(repos) {
@@ -104,6 +105,7 @@ app.post("/", function(req, res) {
       res.status(200).send({});
     })
     .catch(function(error) {
+      console.log(error);
       res.status(500).send({
         error: error
       });
@@ -114,6 +116,7 @@ module.exports = Webtask.fromExpress(app);
 
 function lookupRepos(q, secrets) {
   return new Promise(function(resolve, reject) {
+    console.log("lookupRepos:", q);
     customsearch.cse.list(
       {
         cx: secrets.CX,
@@ -126,6 +129,7 @@ function lookupRepos(q, secrets) {
         }
 
         try {
+          if (!res.items) return [];
           var repos = res.items.map(function(i) {
             var match = i.link.match(/github.com\/([^\/]+)\/([^\/]+)/);
             if (match && match.length === 3) {
