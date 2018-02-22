@@ -28,7 +28,8 @@ Db.prototype.allRepos = function() {
       db
         .collection("repos")
         .find({})
-        .maxScan(1000)
+        .sort({ count: -1 })
+        .limit(20)
         .toArray(function(err, repos) {
           if (err) return reject(err);
           resolve(repos);
@@ -130,7 +131,7 @@ function lookupRepos(q, secrets) {
 
         try {
           if (!res.items) return [];
-          var repos = res.items.map(function(i) {
+          var repos = res.items.slice(0, 5).map(function(i) {
             var match = i.link.match(/github.com\/([^\/]+)\/([^\/]+)/);
             if (match && match.length === 3) {
               return [match[1], match[2]];
